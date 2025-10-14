@@ -34,7 +34,7 @@ Param(
 )
 
 # Script metadata
-[String]$ScriptVersion = "5.0"
+[String]$ScriptVersion = "5.1"
 [String]$JobType = "TSLogoff"
 [DateTime]$ScriptStartTime = Get-Date
 

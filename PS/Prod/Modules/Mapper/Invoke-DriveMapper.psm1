@@ -261,30 +261,53 @@ Function Add-DMDriveMapping {
         
         Write-DMLog "Mapper Drive: About to map '$DriveLetter' to '$UncPath'" -Level Verbose
         
-        # Use WScript.Network for compatibility
+        # Use WScript.Network for compatibility (matching VBScript approach)
         [Object]$Network = New-Object -ComObject WScript.Network
-        $Network.MapNetworkDrive("${DriveLetter}:", $UncPath, $True)
         
-        Write-DMLog "Mapper Drive: Mapped '$DriveLetter' to '$UncPath'" -Level Info
-        
-        # Set description if provided
-        If (-not [String]::IsNullOrEmpty($Description)) {
-            Try {
-                Write-DMLog "Mapper Drive: About to set description for '$DriveLetter' to '$Description'" -Level Verbose
-                
-                [Object]$Shell = New-Object -ComObject Shell.Application
-                $Shell.NameSpace("${DriveLetter}:").Self.Name = $Description
-                
-                Write-DMLog "Mapper Drive: Description for '$DriveLetter' set to '$Description'" -Level Info
-            } Catch {
-                Write-DMLog "Mapper Drive: Failed to set description for '$DriveLetter': $($_.Exception.Message)" -Level Warning
+        # Map the drive with proper error handling (matching VBScript On Error Resume Next)
+        Try {
+            $Network.MapNetworkDrive("${DriveLetter}:", $UncPath, $True)
+            Write-DMLog "Mapper Drive: Mapped '$DriveLetter' to '$UncPath'" -Level Info
+            
+            # Set description if provided (matching VBScript approach)
+            If (-not [String]::IsNullOrEmpty($Description)) {
+                Try {
+                    Write-DMLog "Mapper Drive: About to set description for '$DriveLetter' to '$Description'" -Level Verbose
+                    
+                    [Object]$Shell = New-Object -ComObject Shell.Application
+                    $Shell.NameSpace("${DriveLetter}:").Self.Name = $Description
+                    
+                    Write-DMLog "Mapper Drive: Description for '$DriveLetter' set to '$Description'" -Level Info
+                } Catch {
+                    Write-DMLog "Mapper Drive: Failed to set description for '$DriveLetter': $($_.Exception.Message)" -Level Warning
+                }
             }
+            
+            Return $True
         }
-        
-        Return $True
+        Catch {
+            Write-DMLog "Mapper Drive: Failed to map '$DriveLetter' to '$UncPath'. $($_.Exception.Message)" -Level Error
+            Return $False
+        }
     }
     Catch {
-        Write-DMLog "Mapper Drive: Failed to map '$DriveLetter' to '$UncPath': $($_.Exception.Message)" -Level Error
+        [String]$DriveLetterForLog = If ($Null -ne $Mapping -and -not [String]::IsNullOrEmpty($Mapping.DriveLetter)) { $Mapping.DriveLetter } Else { "Unknown" }
+        [String]$ErrorMessage = ""
+        
+        Try {
+            If ($Null -ne $_.Exception -and -not [String]::IsNullOrEmpty($_.Exception.Message)) {
+                $ErrorMessage = $_.Exception.Message
+            } ElseIf ($Null -ne $_) {
+                $ErrorMessage = $_.ToString()
+            } Else {
+                $ErrorMessage = "Unknown error occurred"
+            }
+        }
+        Catch {
+            $ErrorMessage = "Error details unavailable"
+        }
+        
+        Write-DMLog "Mapper Drive: Error mapping $DriveLetterForLog - $ErrorMessage" -Level Error
         Return $False
     }
 }
