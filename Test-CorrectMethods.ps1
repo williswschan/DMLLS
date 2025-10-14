@@ -204,6 +204,7 @@ Write-TestResult "TEST 2" "Testing GetUserPrinters" -Color Yellow
    <OuMapping xsi:type="xsd:string">$UserOU</OuMapping>
    <AdGroups xsi:type="xsd:string">$UserGroups</AdGroups>
    <Site xsi:type="xsd:string">$UserSite</Site>
+   <HostName xsi:type="xsd:string">$ComputerName</HostName>
   </GetUserPrinters>
  </soap:Body>
 </soap:Envelope>
@@ -244,6 +245,7 @@ Write-TestResult "TEST 3" "Testing GetUserPSTs" -Color Yellow
    <OuMapping xsi:type="xsd:string">$UserOU</OuMapping>
    <AdGroups xsi:type="xsd:string">$UserGroups</AdGroups>
    <Site xsi:type="xsd:string">$UserSite</Site>
+   <HostName xsi:type="xsd:string">$ComputerName</HostName>
   </GetUserPSTs>
  </soap:Body>
 </soap:Envelope>
