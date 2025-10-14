@@ -1,0 +1,15 @@
+﻿Desktop Management Suite - System Settings Backup
+Created: 2025-10-13 20:41:54
+Computer: HKWKS01
+User: Local-Admin
+
+Backed Up Settings:
+- PowerCFG scheme and monitor timeout
+- IE Zone configuration
+
+To restore these settings:
+.\Restore-SystemSettings.ps1 -BackupFolder "C:\Temp\Script\DMLLS\PS\Prod\MISC\System-Backup\20251013-204154"
+
+Or manually restore:
+- PowerCFG: Review C:\Temp\Script\DMLLS\PS\Prod\MISC\System-Backup\20251013-204154\monitor-timeout.txt
+- IE Zones: regedit /s "C:\Temp\Script\DMLLS\PS\Prod\MISC\System-Backup\20251013-204154\IE-Zones-Backup.reg"

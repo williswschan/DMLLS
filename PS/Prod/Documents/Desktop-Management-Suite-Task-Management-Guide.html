@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Desktop Management Suite - Task Management Guide</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #34495e; border-bottom: 1px solid #bdc3c7; padding-bottom: 5px; margin-top: 30px; }
+        h3 { color: #2c3e50; margin-top: 25px; }
+        h4 { color: #7f8c8d; margin-top: 20px; }
+        code { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
+        pre { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        pre code { background: none; border: none; padding: 0; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        ul, ol { margin: 10px 0; padding-left: 30px; }
+        li { margin: 5px 0; }
+        .note { background-color: #e7f3ff; border-left: 4px solid #2196f3; padding: 10px; margin: 15px 0; }
+        .warning { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 15px 0; }
+        .success { background-color: #d4edda; border-left: 4px solid #28a745; padding: 10px; margin: 15px 0; }
+        .step { background-color: #f8f9fa; border-left: 3px solid #6c757d; padding: 10px; margin: 10px 0; }
+        .code-comment { color: #6c757d; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<h1>Desktop Management Suite - Task Management Guide</h1>
+
+<h2>Overview</h2>
+<p>This guide explains how to add new tasks or remove existing tasks from the Desktop Management Suite workflows. Tasks are defined in workflow configuration files (`.psd1`) and executed by the workflow engine.</p>
+
+<h2>Understanding Workflow Structure</h2>
+<p>Each job type has its own workflow configuration file:</p>
+<ul>
+    <li><code>Config\Workflow-Logon.psd1</code> - Desktop logon workflow</li>
+    <li><code>Config\Workflow-Logoff.psd1</code> - Desktop logoff workflow</li>
+    <li><code>Config\Workflow-TSLogon.psd1</code> - Terminal Server logon workflow</li>
+    <li><code>Config\Workflow-TSLogoff.psd1</code> - Terminal Server logoff workflow</li>
+</ul>
+
+<p>Tasks are defined as workflow steps with the following properties:</p>
+<ul>
+    <li><code>Order</code> - Execution order (lower numbers run first)</li>
+    <li><code>Name</code> - Task name</li>
+    <li><code>Phase</code> - Task category (Power, Inventory, Mapper, etc.)</li>
+    <li><code>Module</code> - PowerShell module path</li>
+    <li><code>Function</code> - Function to execute</li>
+    <li><code>Enabled</code> - Whether task is active</li>
+    <li><code>Parameters</code> - Task-specific parameters</li>
+</ul>
+
+<h2>Example 1: Adding a New Task</h2>
+
+<h3>Scenario: Add Office Template Copy Task to Desktop Logon</h3>
+<p><strong>Goal:</strong> Copy office templates to user profile during logon.</p>
+
+<div class="step">
+<h4>Step 1: Create the Module</h4>
+<p>Create a new module file: <code>Modules\Utilities\Invoke-OfficeTemplateCopy.psm1</code></p>
+
+<pre><code><span class="code-comment"># Office Template Copy Module</span>
+<#
+.SYNOPSIS
+    Desktop Management Office Template Copy Module
+    
+.DESCRIPTION
+    Copies office templates to user profile during logon.
+    
+.NOTES
+    Version: 1.0.0
+    Author: Desktop Management Team
+#>
+
+# Import required modules
+Using Module ..\Framework\DMLogger.psm1
+
+<#
+.SYNOPSIS
+    Copies office templates to user profile.
+    
+.PARAMETER UserInfo
+    User information object
+    
+.PARAMETER ComputerInfo
+    Computer information object
+    
+.OUTPUTS
+    Boolean - true if successful
+    
+.EXAMPLE
+    $Success = Invoke-DMOfficeTemplateCopy -UserInfo $User -ComputerInfo $Computer
+#>
+Function Invoke-DMOfficeTemplateCopy {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory=$True)]
+        [PSCustomObject]$UserInfo,
+        
+        [Parameter(Mandatory=$True)]
+        [PSCustomObject]$ComputerInfo
+    )
+    
+    Try {
+        Write-DMLog "Office Template Copy: Starting" -Level Verbose
+        
+        # Define template source and destination paths
+        [String]$TemplateSource = "\\server\Templates\Office"
+        [String]$UserProfile = $env:USERPROFILE
+        [String]$TemplateDestination = "$UserProfile\Templates\Office"
+        
+        # Create destination directory if it doesn't exist
+        If (-not (Test-Path -Path $TemplateDestination)) {
+            New-Item -Path $TemplateDestination -ItemType Directory -Force | Out-Null
+            Write-DMLog "Office Template Copy: Created directory: $TemplateDestination" -Level Verbose
+        }
+        
+        # Copy templates
+        [Int]$CopiedCount = 0
+        [Array]$Templates = Get-ChildItem -Path $TemplateSource -Filter "*.dotx" -ErrorAction SilentlyContinue
+        
+        ForEach ($Template in $Templates) {
+            [String]$DestinationFile = Join-Path $TemplateDestination $Template.Name
+            
+            Try {
+                Copy-Item -Path $Template.FullName -Destination $DestinationFile -Force
+                $CopiedCount++
+                Write-DMLog "Office Template Copy: Copied $($Template.Name)" -Level Verbose
+            }
+            Catch {
+                Write-DMLog "Office Template Copy: Failed to copy $($Template.Name): $($_.Exception.Message)" -Level Warning
+            }
+        }
+        
+        Write-DMLog "Office Template Copy: Successfully copied $CopiedCount template(s)" -Level Info
+        Return $True
+    }
+    Catch {
+        Write-DMLog "Office Template Copy: Error - $($_.Exception.Message)" -Level Error
+        Return $False
+    }
+}
+
+# Export module members
+Export-ModuleMember -Function @(
+    'Invoke-DMOfficeTemplateCopy'
+)</code></pre>
+</div>
+
+<div class="step">
+<h4>Step 2: Update Workflow Configuration</h4>
+<p>Edit <code>Config\Workflow-Logon.psd1</code> and add the new task:</p>
+
+<pre><code>@{
+    <span class="code-comment"># Desktop Management Workflow Configuration - Logon</span>
+    <span class="code-comment"># Defines the execution order and parameters for logon workflow steps</span>
+    
+    WorkflowName = 'Desktop Logon'
+    Description = 'Desktop logon workflow for Windows 10'
+    Version = '1.0'
+    
+    Steps = @(
+        @{
+            Order = 10
+            Name = 'Power Configuration Setup'
+            Phase = 'Power'
+            Module = 'Utilities\Invoke-PowerCFG.psm1'
+            Function = 'Invoke-DMPowerConfiguration'
+            Enabled = $True
+            Parameters = @{
+                JobType = 'Logon'
+            }
+        },
+        
+        @{
+            Order = 20
+            Name = 'User Session Logon Inventory'
+            Phase = 'Inventory'
+            Module = 'Inventory\Invoke-UserSessionInventory.psm1'
+            Function = 'Invoke-DMUserSessionLogonInventory'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 30
+            Name = 'Drive Mapping'
+            Phase = 'Mapper'
+            Module = 'Mapper\Invoke-DriveMapper.psm1'
+            Function = 'Invoke-DMDriveMapping'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 40
+            Name = 'Printer Mapping'
+            Phase = 'Mapper'
+            Module = 'Mapper\Invoke-PrinterMapper.psm1'
+            Function = 'Invoke-DMPrinterMapping'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 50
+            Name = 'PST Mapping'
+            Phase = 'Mapper'
+            Module = 'Mapper\Invoke-PSTMapper.psm1'
+            Function = 'Invoke-DMPSTMapping'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        <span class="code-comment"># NEW TASK ADDED HERE</span>
+        @{
+            Order = 55
+            Name = 'Office Template Copy'
+            Phase = 'Utilities'
+            Module = 'Utilities\Invoke-OfficeTemplateCopy.psm1'
+            Function = 'Invoke-DMOfficeTemplateCopy'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 60
+            Name = 'Password Expiry Notification'
+            Phase = 'Utilities'
+            Module = 'Utilities\Show-PasswordExpiryNotification.psm1'
+            Function = 'Show-DMPasswordExpiryNotification'
+            Enabled = $True
+            Parameters = @{}
+        }
+    )
+}</code></pre>
+</div>
+
+<div class="step">
+<h4>Step 3: Test the New Task</h4>
+<ol>
+    <li>Save the workflow configuration</li>
+    <li>Run the logon script: <code>.\DesktopManagement-Logon.ps1 -Verbose</code></li>
+    <li>Check the logs for "Office Template Copy" entries</li>
+    <li>Verify templates are copied to user profile</li>
+</ol>
+</div>
+
+<hr>
+
+<h2>Example 2: Removing an Existing Task</h2>
+
+<h3>Scenario: Remove Password Expiry Notification from Desktop Logon</h3>
+<p><strong>Goal:</strong> Disable password expiry notifications for desktop logon (but keep them for other workflows).</p>
+
+<div class="step">
+<h4>Step 1: Update Workflow Configuration</h4>
+<p>Edit <code>Config\Workflow-Logon.psd1</code> and disable the password expiry task:</p>
+
+<pre><code>@{
+    <span class="code-comment"># Desktop Management Workflow Configuration - Logon</span>
+    <span class="code-comment"># Defines the execution order and parameters for logon workflow steps</span>
+    
+    WorkflowName = 'Desktop Logon'
+    Description = 'Desktop logon workflow for Windows 10'
+    Version = '1.0'
+    
+    Steps = @(
+        @{
+            Order = 10
+            Name = 'Power Configuration Setup'
+            Phase = 'Power'
+            Module = 'Utilities\Invoke-PowerCFG.psm1'
+            Function = 'Invoke-DMPowerConfiguration'
+            Enabled = $True
+            Parameters = @{
+                JobType = 'Logon'
+            }
+        },
+        
+        @{
+            Order = 20
+            Name = 'User Session Logon Inventory'
+            Phase = 'Inventory'
+            Module = 'Inventory\Invoke-UserSessionInventory.psm1'
+            Function = 'Invoke-DMUserSessionLogonInventory'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 30
+            Name = 'Drive Mapping'
+            Phase = 'Mapper'
+            Module = 'Mapper\Invoke-DriveMapper.psm1'
+            Function = 'Invoke-DMDriveMapping'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 40
+            Name = 'Printer Mapping'
+            Phase = 'Mapper'
+            Module = 'Mapper\Invoke-PrinterMapper.psm1'
+            Function = 'Invoke-DMPrinterMapping'
+            Enabled = $True
+            Parameters = @{}
+        },
+        
+        @{
+            Order = 50
+            Name = 'PST Mapping'
+            Phase = 'Mapper'
+            Module = 'Mapper\Invoke-PSTMapper.psm1'
+            Function = 'Invoke-DMPSTMapping'
+            Enabled = $True
+            Parameters = @{}
+        }
+        
+        <span class="code-comment"># PASSWORD EXPIRY NOTIFICATION REMOVED - No longer needed for logon</span>
+        <span class="code-comment"># @{</span>
+        <span class="code-comment">#     Order = 60</span>
+        <span class="code-comment">#     Name = 'Password Expiry Notification'</span>
+        <span class="code-comment">#     Phase = 'Utilities'</span>
+        <span class="code-comment">#     Module = 'Utilities\Show-PasswordExpiryNotification.psm1'</span>
+        <span class="code-comment">#     Function = 'Show-DMPasswordExpiryNotification'</span>
+        <span class="code-comment">#     Enabled = $False  # DISABLED</span>
+        <span class="code-comment">#     Parameters = @{}</span>
+        <span class="code-comment"># }</span>
+    )
+}</code></pre>
+</div>
+
+<div class="note">
+<h4>Alternative: Disable Instead of Remove</h4>
+<p>If you want to keep the task definition but disable it temporarily:</p>
+
+<pre><code>@{
+    Order = 60
+    Name = 'Password Expiry Notification'
+    Phase = 'Utilities'
+    Module = 'Utilities\Show-PasswordExpiryNotification.psm1'
+    Function = 'Show-DMPasswordExpiryNotification'
+    Enabled = $False  <span class="code-comment"># Simply set to $False</span>
+    Parameters = @{}
+}</code></pre>
+</div>
+
+<div class="step">
+<h4>Step 2: Test the Change</h4>
+<ol>
+    <li>Save the workflow configuration</li>
+    <li>Run the logon script: <code>.\DesktopManagement-Logon.ps1 -Verbose</code></li>
+    <li>Verify password expiry notifications no longer appear during logon</li>
+    <li>Check other workflows still show password notifications when appropriate</li>
+</ol>
+</div>
+
+<hr>
+
+<h2>Best Practices</h2>
+
+<h3>Adding New Tasks</h3>
+<ol>
+    <li><strong>Choose Appropriate Order:</strong> Use increments of 10 to allow future insertions</li>
+    <li><strong>Select Correct Phase:</strong> Choose from existing phases (Power, Inventory, Mapper, Utilities) or create new ones</li>
+    <li><strong>Follow Naming Conventions:</strong> Use descriptive names that match the function purpose</li>
+    <li><strong>Include Error Handling:</strong> Always include Try/Catch blocks in your module functions</li>
+    <li><strong>Add Logging:</strong> Use <code>Write-DMLog</code> for consistent logging throughout the suite</li>
+    <li><strong>Test Thoroughly:</strong> Test both success and failure scenarios</li>
+</ol>
+
+<h3>Removing Tasks</h3>
+<ol>
+    <li><strong>Consider Disable vs Remove:</strong> Use <code>Enabled = $False</code> for temporary disabling, remove entirely for permanent removal</li>
+    <li><strong>Check Dependencies:</strong> Ensure other tasks don't depend on the removed task</li>
+    <li><strong>Update Documentation:</strong> Update any documentation that references the removed task</li>
+    <li><strong>Test All Workflows:</strong> Verify changes don't break other workflows</li>
+</ol>
+
+<h3>Order Guidelines</h3>
+<ul>
+    <li><strong>10-19:</strong> Power configuration tasks</li>
+    <li><strong>20-29:</strong> Inventory collection tasks</li>
+    <li><strong>30-49:</strong> Resource mapping tasks</li>
+    <li><strong>50-59:</strong> Additional utilities</li>
+    <li><strong>60-69:</strong> Notifications and final tasks</li>
+</ul>
+
+<hr>
+
+<h2>Troubleshooting</h2>
+
+<h3>Task Not Executing</h3>
+<ul>
+    <li>Check <code>Enabled = $True</code> in workflow configuration</li>
+    <li>Verify module path is correct</li>
+    <li>Ensure function name matches exactly</li>
+    <li>Check logs for error messages</li>
+</ul>
+
+<h3>Module Import Errors</h3>
+<ul>
+    <li>Verify module file exists at specified path</li>
+    <li>Check module exports the required function</li>
+    <li>Ensure proper <code>Export-ModuleMember</code> statements</li>
+</ul>
+
+<h3>Execution Order Issues</h3>
+<ul>
+    <li>Verify <code>Order</code> values are unique</li>
+    <li>Lower numbers execute first</li>
+    <li>Use increments of 10 for flexibility</li>
+</ul>
+
+</body>
+</html>

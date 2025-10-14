@@ -1,0 +1,7 @@
+Id,Domain,UserId,AdGroup,Site,Drive,UncPath,Description,DisconnectOnLogin
+1,ASIAPAC.NOM,testuser,Domain Users,HKG,H:,\\fileserver\home\testuser,Home Drive,false
+2,ASIAPAC.NOM,testuser,IT Department,HKG,P:,\\fileserver\projects,Projects,false
+3,ASIAPAC.NOM,testuser,Finance Team,HKG,F:,\\fileserver\finance,Finance Share,false
+4,ASIAPAC.NOM,jsmith,Domain Users,NYC,H:,\\fileserver\home\jsmith,Home Drive,false
+5,ASIAPAC.NOM,jsmith,Sales Team,NYC,S:,\\fileserver\sales,Sales Data,false
+
