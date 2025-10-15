@@ -1,4 +1,0 @@
-Id,UserId,UncPath,DisconnectOnLogin
-1,testuser,\\fileserver\pst\testuser\archive.pst,false
-2,jsmith,\\fileserver\pst\jsmith\archive.pst,false
-

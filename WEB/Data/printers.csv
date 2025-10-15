@@ -1,5 +1,0 @@
-Id,HostName,UncPath,IsDefault,Description
-1,WKS001,\\printserver\printer01,true,Office Printer 1
-2,WKS001,\\printserver\printer02,false,Color Printer
-3,WKS002,\\printserver\printer03,true,Finance Printer
-
